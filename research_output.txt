@@ -1,0 +1,123 @@
+﻿
+============================================================
+DATASET EXPORTED -> research_dataset.csv  (870 rows)
+============================================================
+
+Class distribution:
+triage_class
+MINOR           350
+CONSULTATION    270
+EMERGENCY       250
+
+First 10 rows (preview):
+ severity  red_flag  duration_score  criticality  urgency_score  label triage_class
+   2.1236         0          3.8029       4.6600         2.0760      0        MINOR
+   2.7960         0          0.6241       1.7800         1.4212      0        MINOR
+   1.1743         0          3.4647       4.0056         1.5632      0        MINOR
+   3.1242         0          0.0823       5.8495         1.8511      0        MINOR
+   3.4973         0          0.8494       1.9091         1.7597      0        MINOR
+   1.5502         0          1.2170       3.6238         1.2259      0        MINOR
+   2.2958         0          1.1649       4.0593         1.5572      0        MINOR
+   1.4185         0          1.1686       2.8318         1.0843      0        MINOR
+   2.3682         0          3.1407       1.9984         1.7753      0        MINOR
+   2.5427         0          2.3697       1.2323         1.6142      0        MINOR
+
+============================================================
+FEATURE DOCUMENTATION
+============================================================
+                     Feature            Type       Range                                                                                                      Derivation                                   Weight in Score
+                    severity Numeric (float)  1.0 û 10.0               Patient-reported via NLP (1-10 scale or keyword mapping). Minor: 1-4, Moderate: 4-7, Severe: 7-10                                               40%
+                    red_flag    Binary (int)      0 or 1 1 if patient answers 'yes' to follow-up red-flag question (e.g. chest pain, difficulty breathing). 0 otherwise.          30%  (multiplied by 10 before weighting)
+              duration_score Numeric (float)  0.0 û 10.0                     Normalised from raw duration hours: min(10, duration_hours / 336 * 10). 336h = 2 weeks cap.                                               20%
+                 criticality Numeric (float)  1.0 û 10.0                           Looked up from symptoms.json for the matched symptom key (pre-assigned expert score).                                               10%
+urgency_score  [MODEL INPUT] Numeric (float) ~0.0 û 13.0                                       severity╫0.40 + red_flag╫10╫0.30 + duration_score╫0.20 + criticality╫0.10 N/A ù this IS the single feature fed to the model
+
+Label Mapping:
+  0 -> MINOR        (urgency_score < 3.5)
+  1 -> CONSULTATION (urgency_score 3.5 û 6.5)
+  2 -> EMERGENCY    (urgency_score > 6.5)
+
+============================================================
+TRAIN / TEST SPLIT
+============================================================
+  Total samples  : 870
+  Training set   : 696 samples (80%)
+  Test set       : 174 samples (20%)
+  random_state   : 42
+  Stratified     : Yes (class proportions preserved)
+
+============================================================
+RANDOM FOREST CLASSIFIER ù EVALUATION
+============================================================
+  Accuracy           : 0.8506 (85.06%)
+  Precision (weighted): 0.8541
+  Recall    (weighted): 0.8506
+  F1-score  (weighted): 0.8519
+
+  Confusion Matrix (rows=Actual, cols=Predicted):
+                MINOR  CONSULT  EMERGENCY
+  MINOR            65        5          0
+  CONSULT           3       43          8
+  EMERG             0       10         40
+
+  Full Classification Report:
+              precision    recall  f1-score   support
+
+       MINOR       0.96      0.93      0.94        70
+CONSULTATION       0.74      0.80      0.77        54
+   EMERGENCY       0.83      0.80      0.82        50
+
+    accuracy                           0.85       174
+   macro avg       0.84      0.84      0.84       174
+weighted avg       0.85      0.85      0.85       174
+
+
+============================================================
+LOGISTIC REGRESSION CLASSIFIER ù EVALUATION
+============================================================
+  Accuracy           : 0.8218 (82.18%)
+  Precision (weighted): 0.8168
+  Recall    (weighted): 0.8218
+  F1-score  (weighted): 0.8176
+
+  Confusion Matrix (rows=Actual, cols=Predicted):
+                MINOR  CONSULT  EMERGENCY
+  MINOR            67        3          0
+  CONSULT           9       35         10
+  EMERG             0        9         41
+
+  Full Classification Report:
+              precision    recall  f1-score   support
+
+       MINOR       0.88      0.96      0.92        70
+CONSULTATION       0.74      0.65      0.69        54
+   EMERGENCY       0.80      0.82      0.81        50
+
+    accuracy                           0.82       174
+   macro avg       0.81      0.81      0.81       174
+weighted avg       0.82      0.82      0.82       174
+
+
+============================================================
+MODEL COMPARISON: Random Forest vs Logistic Regression
+============================================================
+              Metric Random Forest Logistic Regression Better Model
+            Accuracy        0.8506              0.8218           RF
+Precision (weighted)        0.8541              0.8168           RF
+   Recall (weighted)        0.8506              0.8218           RF
+ F1-Score (weighted)        0.8519              0.8176           RF
+
+============================================================
+SAMPLE PREDICTION EXAMPLES (5 realistic cases)
+============================================================
+                             Description  Severity (1-10)  Red Flag  Duration (hrs)  Dur Score  Criticality  Urgency Score RF Prediction
+    Mild headache, no red flags, 6 hours              2.0         0               6      0.179          4.0         1.2357         MINOR
+Moderate back pain, no red flags, 3 days              5.0         0              72      2.143          5.0         2.9286  CONSULTATION
+      Chest pain, has red flags, 2 hours              8.0         1               2      0.060          9.0         7.1119  CONSULTATION
+         Fever + cough, red flag, 2 days              6.0         1              48      1.429          7.0         6.3857  CONSULTATION
+   Minor skin rash, no red flags, 1 week              3.0         0             168      5.000          3.0         2.5000         MINOR
+
+============================================================
+DONE.  Full dataset saved to: D:\Chatbot - Copy\research_dataset.csv
+============================================================
+

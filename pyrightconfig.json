@@ -1,0 +1,11 @@
+{
+    "include": ["."],
+    "pythonVersion": "3.12",
+    "pythonPlatform": "Windows",
+    "pythonPath": "C:/Users/paduc/AppData/Local/Programs/Python/Python312/python.exe",
+    "extraPaths": [
+        "."
+    ],
+    "reportMissingImports": false,
+    "reportMissingModuleSource": false
+}

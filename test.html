@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediGuide - Hospital Guidance Chatbot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .header-banner {
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .header-banner h1 {
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header-banner p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        #chat-container {
+            width: 100%;
+            max-width: 600px;
+            height: 700px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 18px 25px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        #header-center {
+            flex: 1;
+            text-align: center;
+        }
+
+        #header h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        #header p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-top: 3px;
+        }
+
+        /* ── Header icon buttons (Reload + TTS toggle) ── */
+        .header-icon-btn {
+            background: rgba(255, 255, 255, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.25s, transform 0.2s;
+            flex-shrink: 0;
+        }
+
+        .header-icon-btn:hover {
+            background: rgba(255, 255, 255, 0.32);
+            transform: scale(1.1);
+        }
+
+        .header-icon-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Spinning animation when reload is clicked */
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spin-once {
+            animation: spin 0.5s ease-out;
+        }
+
+        /* TTS muted state */
+        .header-icon-btn.muted {
+            opacity: 0.5;
+        }
+
+        /* ── Chat box ── */
+        #chat-box {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: #f8f9fa;
+        }
+
+        .msg {
+            padding: 12px 16px;
+            border-radius: 18px;
+            max-width: 80%;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            position: relative;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .user {
+            background: #667eea;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        .bot {
+            background: white;
+            color: #333;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .bot strong {
+            color: #667eea;
+        }
+
+        .bot .emergency {
+            color: #dc2626;
+            font-weight: bold;
+        }
+
+        /* ── Badges ── */
+        .decision-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin: 8px 0;
+        }
+
+        .badge-EMERGENCY {
+            background: #fee;
+            color: #dc2626;
+            border: 1px solid #dc2626;
+        }
+
+        .badge-CONSULTATION {
+            background: #eff6ff;
+            color: #2563eb;
+            border: 1px solid #2563eb;
+        }
+
+        .badge-MINOR {
+            background: #f0fdf4;
+            color: #16a34a;
+            border: 1px solid #16a34a;
+        }
+
+        /* ── Department / doctors ── */
+        .dept-info {
+            background: #eff6ff;
+            padding: 12px;
+            border-left: 3px solid #2563eb;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+
+        .doctors-list {
+            margin-top: 10px;
+            background: #f8fafc;
+            padding: 10px;
+            border-radius: 6px;
+        }
+
+        .doctors-list h4 {
+            color: #667eea;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+
+        .doctor-card {
+            background: white;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border-left: 3px solid #667eea;
+            font-size: 0.85rem;
+        }
+
+        .doctor-card .name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .doctor-card .spec {
+            color: #666;
+            font-size: 0.8rem;
+        }
+
+        .doctor-card .exp {
+            color: #999;
+            font-size: 0.75rem;
+        }
+
+        /* ── Input area ── */
+        .input-area {
+            padding: 15px 20px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            background: white;
+        }
+
+        input {
+            flex-grow: 1;
+            padding: 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 25px;
+            outline: none;
+            font-size: 0.95rem;
+            transition: border 0.3s;
+        }
+
+        input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        /* ── Mic button ── */
+        #mic-btn {
+            background: #f1f5f9;
+            color: #667eea;
+            border: 1.5px solid #cbd5e1;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background 0.25s, border-color 0.25s, transform 0.2s;
+        }
+
+        #mic-btn:hover {
+            background: #e8ecff;
+            border-color: #667eea;
+            transform: scale(1.08);
+        }
+
+        /* Recording (active) state */
+        #mic-btn.recording {
+            background: #fee2e2;
+            border-color: #dc2626;
+            color: #dc2626;
+            animation: mic-pulse 1.2s infinite;
+        }
+
+        @keyframes mic-pulse {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4);
+            }
+
+            50% {
+                box-shadow: 0 0 0 10px rgba(220, 38, 38, 0);
+            }
+        }
+
+        /* Hidden when STT not supported */
+        #mic-btn.hidden {
+            display: none;
+        }
+
+        /* ── Send button ── */
+        #send-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.3s;
+            white-space: nowrap;
+        }
+
+        #send-btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        #send-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ── Option buttons ── */
+        .options-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .opt-btn {
+            background: white;
+            border: 1px solid #667eea;
+            color: #667eea;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: 0.2s;
+            font-weight: 500;
+        }
+
+        .opt-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        /* ── Typing indicator ── */
+        .typing {
+            display: flex;
+            gap: 4px;
+            padding: 12px 16px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 18px;
+            width: fit-content;
+            border-bottom-left-radius: 4px;
+        }
+
+        .typing span {
+            width: 8px;
+            height: 8px;
+            background: #667eea;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+
+            0%,
+            60%,
+            100% {
+                opacity: 0.3;
+                transform: scale(0.8);
+            }
+
+            30% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* ── STT not-supported note ── */
+        #stt-note {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            text-align: center;
+            padding: 4px 20px 8px;
+            background: white;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header-banner">
+        <h1>🏥 MediGuide</h1>
+        <p>Intelligent Hospital Guidance Assistant • Powered by NLP &amp; ML</p>
+    </div>
+
+    <div id="chat-container">
+        <div id="header">
+            <!-- TTS Toggle (left side) -->
+            <button class="header-icon-btn" id="tts-btn" title="Toggle Voice Replies (Text-to-Speech)">🔊</button>
+
+            <!-- Centre title -->
+            <div id="header-center">
+                <h2>💬 Chat with MediGuide</h2>
+                <p>Get instant guidance for your symptoms</p>
+            </div>
+
+            <!-- Reload / Restart button (right side) -->
+            <button class="header-icon-btn" id="reload-btn" title="Start a new conversation">🔄</button>
+        </div>
+
+        <div id="chat-box"></div>
+
+        <!-- STT not-supported note (hidden by default, shown only when unsupported) -->
+        <div id="stt-note" style="display:none;">
+            🎤 Voice input is not supported on this browser. Please type your message.
+        </div>
+
+        <div class="input-area">
+            <!-- Mic button for Speech-to-Text -->
+            <button id="mic-btn" title="Click to speak">🎤</button>
+
+            <input type="text" id="user-input" placeholder="Describe your symptom or click 🎤 to speak..."
+                autocomplete="off">
+            <button id="send-btn">Send</button>
+        </div>
+    </div>
+
+    <script>
+        // ═══════════════════════════════════════════════════
+        //  DOM references
+        // ═══════════════════════════════════════════════════
+        const input = document.getElementById('user-input');
+        const box = document.getElementById('chat-box');
+        const sendBtn = document.getElementById('send-btn');
+        const micBtn = document.getElementById('mic-btn');
+        const ttsBtn = document.getElementById('tts-btn');
+        const reloadBtn = document.getElementById('reload-btn');
+        const sttNote = document.getElementById('stt-note');
+
+        // ═══════════════════════════════════════════════════
+        //  Session ID (regenerated on each reload)
+        // ═══════════════════════════════════════════════════
+        let userId = 'user_' + Date.now();
+
+        // ═══════════════════════════════════════════════════
+        //  TTS STATE
+        // ═══════════════════════════════════════════════════
+        let ttsEnabled = true;   // ON by default
+
+        ttsBtn.addEventListener('click', () => {
+            ttsEnabled = !ttsEnabled;
+            ttsBtn.textContent = ttsEnabled ? '🔊' : '🔇';
+            ttsBtn.classList.toggle('muted', !ttsEnabled);
+            ttsBtn.title = ttsEnabled ? 'Toggle Voice Replies (ON)' : 'Toggle Voice Replies (OFF)';
+            if (!ttsEnabled) window.speechSynthesis.cancel(); // stop any ongoing speech
+        });
+
+        /** Speak text aloud (TTS). Strips markdown / emojis for clean voice output. */
+        function speakText(text) {
+            if (!ttsEnabled || !window.speechSynthesis) return;
+            window.speechSynthesis.cancel(); // cancel any previous utterance
+
+            // Strip markdown bold (**text**), emojis, and symbols for cleaner audio
+            const clean = text
+                .replace(/\*\*(.*?)\*\*/g, '$1')
+                .replace(/[^\x00-\x7F]/g, '')   // remove non-ASCII (emojis)
+                .replace(/\*/g, '')
+                .replace(/#+\s/g, '')
+                .replace(/\n+/g, '. ')
+                .trim();
+
+            const utterance = new SpeechSynthesisUtterance(clean);
+            utterance.lang = 'en-US';
+            utterance.rate = 0.92;   // slightly slower for clarity (elderly-friendly)
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+
+            // Prefer a female voice if available (generally clearer for healthcare)
+            const voices = window.speechSynthesis.getVoices();
+            const preferred = voices.find(v => v.lang === 'en-US' && v.name.toLowerCase().includes('female'))
+                || voices.find(v => v.lang === 'en-US')
+                || voices[0];
+            if (preferred) utterance.voice = preferred;
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // Voices load asynchronously on some browsers
+        window.speechSynthesis.onvoiceschanged = () => { /* voices now available */ };
+
+        // ═══════════════════════════════════════════════════
+        //  STT — Web Speech API
+        // ═══════════════════════════════════════════════════
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition = null;
+        let isListening = false;
+
+        if (!SpeechRecognition) {
+            // Browser doesn't support STT
+            micBtn.classList.add('hidden');
+            sttNote.style.display = 'block';
+        } else {
+            recognition = new SpeechRecognition();
+            recognition.lang = 'en-US';
+            recognition.continuous = false;
+            recognition.interimResults = false;
+
+            recognition.onstart = () => {
+                isListening = true;
+                micBtn.classList.add('recording');
+                micBtn.title = 'Listening… click to stop';
+                input.placeholder = '🎤 Listening…';
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                micBtn.classList.remove('recording');
+                micBtn.title = 'Click to speak';
+                input.placeholder = 'Describe your symptom or click 🎤 to speak...';
+            };
+
+            recognition.onerror = (e) => {
+                isListening = false;
+                micBtn.classList.remove('recording');
+                micBtn.title = 'Click to speak';
+                input.placeholder = 'Describe your symptom or click 🎤 to speak...';
+                if (e.error === 'no-speech') {
+                    input.placeholder = 'No speech detected. Try again.';
+                } else if (e.error === 'not-allowed') {
+                    sttNote.style.display = 'block';
+                    sttNote.textContent = '🎤 Microphone access denied. Please allow microphone permission and refresh.';
+                }
+            };
+
+            recognition.onresult = (e) => {
+                const transcript = e.results[0][0].transcript.trim();
+                if (transcript) {
+                    input.value = transcript;
+                    // Small delay so the user can see what was recognised, then auto-send
+                    setTimeout(() => sendMessage(), 3000);
+                }
+            };
+
+            micBtn.addEventListener('click', () => {
+                if (isListening) {
+                    recognition.stop();
+                } else {
+                    try {
+                        recognition.start();
+                    } catch (err) {
+                        // Already started — ignore
+                    }
+                }
+            });
+        }
+
+        // ═══════════════════════════════════════════════════
+        //  RELOAD / RESTART
+        // ═══════════════════════════════════════════════════
+        reloadBtn.addEventListener('click', () => {
+            // Spin animation
+            reloadBtn.classList.remove('spin-once');
+            void reloadBtn.offsetWidth; // reflow to restart animation
+            reloadBtn.classList.add('spin-once');
+
+            // Stop any ongoing speech
+            if (window.speechSynthesis) window.speechSynthesis.cancel();
+
+            // Generate a brand-new user session
+            userId = 'user_' + Date.now();
+
+            // Clear chat
+            box.innerHTML = '';
+            input.value = '';
+            sendBtn.disabled = false;
+
+            // Show fresh greeting
+            addBotMessage("Hello! I'm **MediGuide**, your Hospital Guidance Assistant. 🏥\n\nI'm here to help guide you based on your symptoms. Please describe the main problem or symptom you are experiencing.");
+        });
+
+        // ═══════════════════════════════════════════════════
+        //  BOT MESSAGE RENDERER
+        // ═══════════════════════════════════════════════════
+        function addBotMessage(text, data = {}) {
+            let msgHtml = text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/⚠️/g, '<span class="emergency">⚠️</span>')
+                .replace(/\n/g, '<br>');
+
+            let fullHtml = `<div class="msg bot">${msgHtml}`;
+
+            // Decision badge
+            if (data.decision) {
+                const badgeClass = 'badge-' + data.decision;
+                fullHtml += `<br><span class="decision-badge ${badgeClass}">${data.decision}</span>`;
+            }
+
+            // Department info
+            if (data.dept && (data.decision === 'CONSULTATION' || data.decision === 'MINOR')) {
+                fullHtml += `<div class="dept-info">📍 Department: <strong>${data.dept}</strong></div>`;
+            }
+
+            // Doctors list
+            if (data.doctors && data.doctors.length > 0) {
+                fullHtml += `<div class="doctors-list"><h4>👨‍⚕️ Available Doctors:</h4>`;
+                data.doctors.forEach(doc => {
+                    fullHtml += `<div class="doctor-card">
+                        <div class="name">${doc.name}</div>
+                        <div class="spec">${doc.specialization}</div>
+                        <div class="exp">${doc.experience} experience</div>
+                    </div>`;
+                });
+                fullHtml += `</div>`;
+            }
+
+            fullHtml += `</div>`;
+            box.innerHTML += fullHtml;
+
+            // Quick-reply option buttons
+            if (data.options && data.options.length > 0) {
+                let optHtml = '<div class="options-container">';
+                data.options.forEach(opt => {
+                    optHtml += `<button class="opt-btn" onclick="sendMessage('${opt}')">${opt}</button>`;
+                });
+                optHtml += '</div>';
+                box.innerHTML += optHtml;
+            }
+
+            box.scrollTop = box.scrollHeight;
+
+            // Read the plain text portion aloud (TTS)
+            speakText(text);
+        }
+
+        // ═══════════════════════════════════════════════════
+        //  SEND MESSAGE
+        // ═══════════════════════════════════════════════════
+        async function sendMessage(text) {
+            const msgText = text || input.value;
+            if (!msgText.trim()) return;
+
+            // Stop any TTS when user speaks/types
+            if (window.speechSynthesis) window.speechSynthesis.cancel();
+
+            box.innerHTML += `<div class="msg user">${msgText}</div>`;
+            input.value = '';
+            sendBtn.disabled = true;
+            box.scrollTop = box.scrollHeight;
+
+            const typingId = 'typing_' + Date.now();
+            box.innerHTML += `<div class="typing" id="${typingId}"><span></span><span></span><span></span></div>`;
+            box.scrollTop = box.scrollHeight;
+
+            try {
+                const response = await fetch('http://127.0.0.1:5000/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: msgText, user_id: userId })
+                });
+                const data = await response.json();
+
+                document.getElementById(typingId).remove();
+                addBotMessage(data.reply, data);
+
+            } catch (err) {
+                document.getElementById(typingId).remove();
+                box.innerHTML += `<div class="msg bot" style="color:red; border-color:#dc2626;">⚠️ Connection error. Please ensure MediGuide server is running on port 5000.</div>`;
+            } finally {
+                sendBtn.disabled = false;
+                input.focus();
+                box.scrollTop = box.scrollHeight;
+            }
+        }
+
+        // ═══════════════════════════════════════════════════
+        //  EVENT LISTENERS
+        // ═══════════════════════════════════════════════════
+        sendBtn.addEventListener('click', () => sendMessage());
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !sendBtn.disabled) sendMessage();
+        });
+
+        // ═══════════════════════════════════════════════════
+        //  INITIAL GREETING on page load
+        // ═══════════════════════════════════════════════════
+        window.addEventListener('load', () => {
+            addBotMessage("Hello! I'm **MediGuide**, your Hospital Guidance Assistant. 🏥\n\nI'm here to help guide you based on your symptoms. Please describe the main problem or symptom you are experiencing.");
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,50 @@
+{
+  "headache": {
+    "home_care": "Rest in a quiet, dark room. Stay hydrated and avoid screen time. You may use over-the-counter pain relievers as directed.",
+    "warning_signs": "Seek immediate care if you experience: sudden severe headache, confusion, vision changes, or weakness in limbs."
+  },
+  "fever": {
+    "home_care": "Drink plenty of fluids, wear light clothing, and monitor your temperature regularly. Rest and use fever-reducing medication as needed.",
+    "warning_signs": "Seek immediate care if: temperature exceeds 103°F (39.4°C), difficulty breathing, stiff neck with headache, or confusion occurs."
+  },
+  "stomach pain": {
+    "home_care": "Stick to a bland diet (toast, rice, bananas). Avoid spicy or oily foods and stay hydrated with small sips of water.",
+    "warning_signs": "Seek immediate care if: severe pain, vomiting blood, black stools, unable to keep fluids down, or pain worsens rapidly."
+  },
+  "cough": {
+    "home_care": "Use a humidifier, drink warm honey-lemon tea, and get plenty of rest. Avoid irritants like smoke.",
+    "warning_signs": "Seek immediate care if: coughing blood, severe chest pain, difficulty breathing, or lips turn blue."
+  },
+  "chest pain": {
+    "home_care": "Chest pain requires medical evaluation. If uncertain about severity, contact your doctor.",
+    "warning_signs": "Seek IMMEDIATE emergency care if: crushing pain, pain spreading to arm or jaw, sweating, shortness of breath, or nausea."
+  },
+  "breathing difficulty": {
+    "home_care": "Sit upright, stay calm, and breathe slowly. If you have an inhaler prescribed, use it as directed.",
+    "warning_signs": "Seek IMMEDIATE emergency care if: severe difficulty breathing, blue lips, chest pain, or unable to speak in full sentences."
+  },
+  "dizziness": {
+    "home_care": "Sit or lie down immediately. Stay hydrated and avoid sudden movements. Rest until the feeling passes.",
+    "warning_signs": "Seek immediate care if: fainting, chest pain, severe headache, slurred speech, or falls occur."
+  },
+  "injury": {
+    "home_care": "For minor injuries: clean the wound, apply pressure to stop bleeding, and use ice for swelling. Keep the area elevated.",
+    "warning_signs": "Seek immediate care if: heavy bleeding that won't stop, bone visible, severe pain, deformity, or loss of function."
+  },
+  "vomiting": {
+    "home_care": "Rest your stomach for 1-2 hours, then try small sips of clear fluids. Gradually return to bland foods when you can tolerate them.",
+    "warning_signs": "Seek immediate care if: blood in vomit, can't keep any fluids down for 12+ hours, severe abdominal pain, or signs of dehydration."
+  },
+  "back pain": {
+    "home_care": "Apply a warm or cold compress to the affected area. Avoid strenuous activity. Gentle stretching may help.",
+    "warning_signs": "Seek immediate care if: numbness or tingling in legs, loss of bladder/bowel control, or weakness in legs."
+  },
+  "sore throat": {
+    "home_care": "Gargle with warm salt water, drink warm liquids, and use throat lozenges. Stay hydrated and rest your voice.",
+    "warning_signs": "Seek immediate care if: difficulty breathing, can't swallow liquids, drooling, or severe swelling in throat."
+  },
+  "rash": {
+    "home_care": "Avoid scratching. Apply cool compresses and use fragrance-free moisturizer. Avoid known allergens or irritants.",
+    "warning_signs": "Seek immediate care if: difficulty breathing, facial/tongue swelling, rash with high fever, or rapidly spreading rash."
+  }
+}
