@@ -378,6 +378,55 @@
             transform: translateY(-1px);
         }
 
+        /* ── Question progress indicator ── */
+        .question-progress {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .progress-bar-wrap {
+            flex: 1;
+            height: 4px;
+            background: #e2e8f0;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: #667eea;
+            border-radius: 2px;
+            transition: width 0.4s ease;
+        }
+
+        /* ── STT cancel bar ── */
+        #stt-cancel-bar {
+            display: none;
+            padding: 8px 20px;
+            background: #fef9ec;
+            border-top: 1px solid #fde68a;
+            font-size: 0.82rem;
+            color: #92400e;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #stt-cancel-bar span { flex: 1; }
+
+        #stt-cancel-btn {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
         /* ── Typing indicator ── */
         .typing {
             display: flex;
@@ -429,6 +478,114 @@
             padding: 4px 20px 8px;
             background: white;
         }
+
+        /* ── Server error banner ── */
+        #error-banner {
+            display: none;
+            background: #fef2f2;
+            border-bottom: 2px solid #dc2626;
+            padding: 10px 16px;
+            font-size: 0.85rem;
+            color: #991b1b;
+            align-items: center;
+            gap: 10px;
+        }
+        #error-banner span { flex: 1; }
+        #error-banner button {
+            background: none;
+            border: none;
+            color: #991b1b;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            padding: 0 4px;
+        }
+
+        /* ════════════════════════════════
+           DARK MODE
+           ════════════════════════════════ */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+            }
+            #chat-container {
+                background: #1e1e2e;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            }
+            #chat-box {
+                background: #161622;
+            }
+            .bot {
+                background: #2a2a3e;
+                color: #e2e8f0;
+                border-color: #3a3a55;
+            }
+            .bot strong { color: #a5b4fc; }
+            .user {
+                background: #4f46e5;
+            }
+            .input-area {
+                background: #1e1e2e;
+                border-top-color: #3a3a55;
+            }
+            input {
+                background: #2a2a3e;
+                color: #e2e8f0;
+                border-color: #3a3a55;
+            }
+            input::placeholder { color: #64748b; }
+            input:focus {
+                border-color: #818cf8;
+                box-shadow: 0 0 0 3px rgba(129,140,248,0.2);
+            }
+            #mic-btn {
+                background: #2a2a3e;
+                border-color: #3a3a55;
+                color: #a5b4fc;
+            }
+            #mic-btn:hover {
+                background: #3730a3;
+                border-color: #818cf8;
+            }
+            .typing { background: #2a2a3e; border-color: #3a3a55; }
+            .typing span { background: #818cf8; }
+            .dept-info {
+                background: #1e3a5f;
+                border-left-color: #60a5fa;
+            }
+            .doctors-list { background: #1e1e2e; }
+            .doctor-card {
+                background: #2a2a3e;
+                border-left-color: #818cf8;
+            }
+            .doctor-card .name { color: #e2e8f0; }
+            .doctor-card .spec { color: #94a3b8; }
+            .doctor-card .exp  { color: #64748b; }
+            .opt-btn {
+                background: #2a2a3e;
+                border-color: #818cf8;
+                color: #a5b4fc;
+            }
+            .opt-btn:hover {
+                background: #4f46e5;
+                color: white;
+            }
+            .progress-bar-wrap { background: #3a3a55; }
+            .progress-bar-fill { background: #818cf8; }
+            .question-progress { color: #64748b; }
+            #stt-note { background: #1e1e2e; color: #64748b; }
+            #stt-cancel-bar {
+                background: #2d2308;
+                border-top-color: #92400e;
+                color: #fde68a;
+            }
+            #error-banner {
+                background: #2d1515;
+                border-bottom-color: #dc2626;
+                color: #fca5a5;
+            }
+            #error-banner button { color: #fca5a5; }
+        }
     </style>
 </head>
 
@@ -455,9 +612,21 @@
 
         <div id="chat-box"></div>
 
+        <!-- Persistent server error banner -->
+        <div id="error-banner">
+            <span>⚠️ MediGuide is temporarily unavailable. Please check the server and try again.</span>
+            <button onclick="document.getElementById('error-banner').style.display='none'" title="Dismiss">✕</button>
+        </div>
+
         <!-- STT not-supported note (hidden by default, shown only when unsupported) -->
         <div id="stt-note" style="display:none;">
             🎤 Voice input is not supported on this browser. Please type your message.
+        </div>
+
+        <!-- STT cancel bar (shown for 3 sec after speech recognised) -->
+        <div id="stt-cancel-bar">
+            <span>🎤 Sending in <strong id="stt-countdown">3</strong>s… review your message above</span>
+            <button id="stt-cancel-btn">✕ Cancel</button>
         </div>
 
         <div class="input-area">
@@ -481,6 +650,19 @@
         const ttsBtn = document.getElementById('tts-btn');
         const reloadBtn = document.getElementById('reload-btn');
         const sttNote = document.getElementById('stt-note');
+        const sttCancelBar = document.getElementById('stt-cancel-bar');
+        const sttCancelBtn = document.getElementById('stt-cancel-btn');
+        const sttCountdown = document.getElementById('stt-countdown');
+
+        // Friendly labels for decision badges
+        const DECISION_LABELS = {
+            'MINOR': 'Self Care Advised',
+            'CONSULTATION': 'Doctor Visit Recommended',
+            'EMERGENCY': 'Emergency — Act Immediately'
+        };
+
+        let sttSendTimer = null;
+        let sttCountdownTimer = null;
 
         // ═══════════════════════════════════════════════════
         //  Session ID (regenerated on each reload)
@@ -500,18 +682,20 @@
             if (!ttsEnabled) window.speechSynthesis.cancel(); // stop any ongoing speech
         });
 
-        /** Speak text aloud (TTS). Strips markdown / emojis for clean voice output. */
+        /** Speak text aloud (TTS). Reads ONLY the first sentence for clarity. */
         function speakText(text) {
             if (!ttsEnabled || !window.speechSynthesis) return;
-            window.speechSynthesis.cancel(); // cancel any previous utterance
+            window.speechSynthesis.cancel();
+
+            // Extract first sentence only — stops at first . ! ? or double newline
+            const firstSentence = text.split(/[.!?\n\n]/)[0].trim() || text;
 
             // Strip markdown bold (**text**), emojis, and symbols for cleaner audio
-            const clean = text
+            const clean = firstSentence
                 .replace(/\*\*(.*?)\*\*/g, '$1')
                 .replace(/[^\x00-\x7F]/g, '')   // remove non-ASCII (emojis)
                 .replace(/\*/g, '')
                 .replace(/#+\s/g, '')
-                .replace(/\n+/g, '. ')
                 .trim();
 
             const utterance = new SpeechSynthesisUtterance(clean);
@@ -581,10 +765,31 @@
                 const transcript = e.results[0][0].transcript.trim();
                 if (transcript) {
                     input.value = transcript;
-                    // Small delay so the user can see what was recognised, then auto-send
-                    setTimeout(() => sendMessage(), 3000);
+
+                    // Show cancel bar with 3-second countdown
+                    let remaining = 3;
+                    sttCountdown.textContent = remaining;
+                    sttCancelBar.style.display = 'flex';
+
+                    sttCountdownTimer = setInterval(() => {
+                        remaining--;
+                        sttCountdown.textContent = remaining;
+                        if (remaining <= 0) clearInterval(sttCountdownTimer);
+                    }, 1000);
+
+                    sttSendTimer = setTimeout(() => {
+                        sttCancelBar.style.display = 'none';
+                        sendMessage();
+                    }, 3000);
                 }
             };
+
+            sttCancelBtn.addEventListener('click', () => {
+                clearTimeout(sttSendTimer);
+                clearInterval(sttCountdownTimer);
+                sttCancelBar.style.display = 'none';
+                input.focus();
+            });
 
             micBtn.addEventListener('click', () => {
                 if (isListening) {
@@ -634,10 +839,20 @@
 
             let fullHtml = `<div class="msg bot">${msgHtml}`;
 
-            // Decision badge
+            // Progress indicator for follow-up questions
+            if (data.question_num && data.question_total) {
+                const pct = (data.question_num / data.question_total) * 100;
+                fullHtml += `<div class="question-progress">
+                    <span>Question ${data.question_num} of ${data.question_total}</span>
+                    <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+                </div>`;
+            }
+
+            // Decision badge with friendly label
             if (data.decision) {
                 const badgeClass = 'badge-' + data.decision;
-                fullHtml += `<br><span class="decision-badge ${badgeClass}">${data.decision}</span>`;
+                const label = DECISION_LABELS[data.decision] || data.decision;
+                fullHtml += `<br><span class="decision-badge ${badgeClass}">${label}</span>`;
             }
 
             // Department info
@@ -671,7 +886,7 @@
                 box.innerHTML += optHtml;
             }
 
-            box.scrollTop = box.scrollHeight;
+            box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' });
 
             // Read the plain text portion aloud (TTS)
             speakText(text);
@@ -690,11 +905,11 @@
             box.innerHTML += `<div class="msg user">${msgText}</div>`;
             input.value = '';
             sendBtn.disabled = true;
-            box.scrollTop = box.scrollHeight;
+            box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' });
 
             const typingId = 'typing_' + Date.now();
             box.innerHTML += `<div class="typing" id="${typingId}"><span></span><span></span><span></span></div>`;
-            box.scrollTop = box.scrollHeight;
+            box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' });
 
             try {
                 const response = await fetch('http://127.0.0.1:5000/chat', {
@@ -709,11 +924,13 @@
 
             } catch (err) {
                 document.getElementById(typingId).remove();
-                box.innerHTML += `<div class="msg bot" style="color:red; border-color:#dc2626;">⚠️ Connection error. Please ensure MediGuide server is running on port 5000.</div>`;
+                // Show persistent banner instead of inline error message
+                const banner = document.getElementById('error-banner');
+                banner.style.display = 'flex';
             } finally {
                 sendBtn.disabled = false;
                 input.focus();
-                box.scrollTop = box.scrollHeight;
+                box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' });
             }
         }
 

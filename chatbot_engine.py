@@ -78,6 +78,28 @@ class TriageBot:
         
         return (False, None)
 
+    def detect_emergency_critical(self, text):
+        """
+        Lightweight emergency check used during follow-up questions.
+        Only triggers on unmistakable, high-confidence life-threatening phrases
+        to avoid false positives from normal follow-up answers.
+        """
+        CRITICAL_PHRASES = [
+            "can't breathe", "cannot breathe", "chest pain", "heart attack",
+            "unconscious", "passed out", "not breathing", "severe bleeding",
+            "bleeding won't stop", "suicidal", "want to die", "end my life",
+            "choking", "blue lips", "paralysis", "seizure"
+        ]
+        text = text.lower().strip()
+        for phrase in CRITICAL_PHRASES:
+            if phrase in text:
+                return (True,
+                        "⚠️ **This may be a medical emergency.**\n\n"
+                        "Based on what you've just described, I strongly recommend you "
+                        "**visit the Emergency Department immediately** or call emergency services (108).\n\n"
+                        "Please do not delay seeking immediate medical attention.")
+        return (False, None)
+
     def extract_symptoms(self, text):
         """Extract symptoms using NLP-enhanced matching"""
         return self.nlp.extract_symptoms_nlp(text)
@@ -105,17 +127,23 @@ class TriageBot:
         # Convert duration to hours for ML model
         duration_hours = self.ml_classifier.convert_duration_to_hours(duration_value, duration_unit)
         
-        # Check for red flags in follow-up answers
+        # Check for red flags — only look for genuinely concerning keywords in the answer text.
+        # We do NOT check yes/no alone because context matters:
+        #   "Can you move normally?" → "yes" = GOOD, not a red flag
+        #   "Are you coughing blood?" → "no" = fine
+        # Keyword evidence is unambiguous regardless of question phrasing.
+        CONCERN_KEYWORDS = [
+            'blood', 'bleeding', 'severe', 'unbearable', 'worse', 'worsening',
+            'can\'t', 'cannot', 'unable', 'paralys', 'collapsed', 'fainted',
+            'spreading', 'getting worse', 'much worse', 'really bad'
+        ]
         has_red_flags = 0
         for answer in follow_up_answers:
             answer_lower = answer.lower()
-            yes_no = self.nlp.extract_yes_no(answer_lower)
-            
-            # If answer contains concerning keywords or is "yes" to danger question
-            if yes_no == 'yes' or any(word in answer_lower for word in ['blood', 'severe', 'worse', 'can\'t', 'unable']):
+            if any(kw in answer_lower for kw in CONCERN_KEYWORDS):
                 has_red_flags = 1
                 break
-        
+
         # Use ML model to predict classification
         prediction, probabilities, confidence = self.ml_classifier.predict(
             severity_score=severity_score,
@@ -123,9 +151,14 @@ class TriageBot:
             has_red_flags=has_red_flags,
             symptom_key=symptom
         )
-        
+
         classification = self.ml_classifier.get_classification_name(prediction)
-        
+
+        # Safety override: mild severity (score ≤ 3) should never be EMERGENCY.
+        # The ML model is trained on synthetic data and can produce noisy boundaries.
+        if severity_score <= 3 and classification == "EMERGENCY":
+            classification = "CONSULTATION"
+
         # Build response based on ML prediction
         if classification == "EMERGENCY":
             return {
@@ -136,7 +169,7 @@ class TriageBot:
                 "dept": dept,
                 "ml_confidence": confidence
             }
-        
+
         elif classification == "CONSULTATION":
             return {
                 "decision": "CONSULTATION",
@@ -146,7 +179,7 @@ class TriageBot:
                 "dept": dept,
                 "ml_confidence": confidence
             }
-        
+
         else:  # MINOR
             precautions = self.precautions_data.get(symptom, {})
             return {
@@ -158,6 +191,7 @@ class TriageBot:
                 "warning_signs": precautions.get("warning_signs", "Monitor your symptoms and seek care if they worsen."),
                 "ml_confidence": confidence
             }
+
 
     def get_doctors_for_dept(self, dept_name):
         """Returns a list of doctors with details for a department"""

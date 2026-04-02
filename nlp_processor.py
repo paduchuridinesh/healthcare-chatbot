@@ -192,7 +192,7 @@ class NLPProcessor:
         text = text.lower().strip()
         
         yes_patterns = ['yes', 'yeah', 'yep', 'yup', 'sure', 'correct', 'right', 'affirmative', 'definitely', 'absolutely']
-        no_patterns = ['no', 'nope', 'nah', 'not', 'negative', 'don\'t', 'doesn\'t', 'haven\'t', 'hasn\'t']
+        no_patterns = ['no', 'nope', 'nah', 'negative', 'don\'t', 'doesn\'t', 'haven\'t', 'hasn\'t']
         
         for pattern in yes_patterns:
             if pattern in text:

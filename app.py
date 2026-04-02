@@ -3,12 +3,17 @@ MediGuide - Hospital Guidance Chatbot
 Flask API with NLP and ML Integration
 """
 
+import time
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from chatbot_engine import TriageBot
 
 app = Flask(__name__)
+# TODO before go-live: lock CORS to your hospital domain, e.g.:
+# CORS(app, origins=["https://yourhospital.com"])
 CORS(app)
+
+SESSION_MAX = 500  # max concurrent sessions kept in RAM
 
 # Initialize MediGuide bot
 bot = TriageBot()
@@ -27,6 +32,18 @@ def chat():
     user_id = data.get("user_id", "default_user")
     message = data.get("message", "").strip()
 
+    # --- Session cleanup: remove sessions idle for more than 30 minutes ---
+    cutoff = time.time() - 1800
+    expired = [k for k, v in sessions.items() if v.get("last_active", 0) < cutoff]
+    for k in expired:
+        del sessions[k]
+
+    # --- Session cap: evict oldest if limit exceeded ---
+    if len(sessions) > SESSION_MAX:
+        oldest = sorted(sessions.items(), key=lambda x: x[1].get("last_active", 0))
+        for k, _ in oldest[:len(sessions) - SESSION_MAX]:
+            del sessions[k]
+
     # Initialize session if new user
     if user_id not in sessions:
         sessions[user_id] = {
@@ -36,13 +53,21 @@ def chat():
             "severity": None,
             "severity_score": None,
             "answers": [],
-            "disclaimer_shown": False
+            "disclaimer_shown": False,
+            "last_active": time.time()
         }
+
+    # Refresh activity timestamp on every message
+    sessions[user_id]["last_active"] = time.time()
 
     state = sessions[user_id]
 
-    # === EMERGENCY CHECK (HIGHEST PRIORITY - CHECK AT EVERY INPUT) ===
-    is_emergency, emergency_msg = bot.detect_emergency(message)
+    # === EMERGENCY CHECK (HIGHEST PRIORITY) ===
+    # Full scan at START; focused high-confidence scan during follow-up to avoid false triggers
+    if state["step"] == "START":
+        is_emergency, emergency_msg = bot.detect_emergency(message)
+    else:
+        is_emergency, emergency_msg = bot.detect_emergency_critical(message)
     if is_emergency:
         sessions[user_id] = {
             "step": "COMPLETED",
@@ -51,7 +76,8 @@ def chat():
             "severity": None,
             "severity_score": None,
             "answers": [],
-            "disclaimer_shown": True
+            "disclaimer_shown": True,
+            "last_active": time.time()
         }
         return jsonify({
             "reply": emergency_msg,
@@ -104,8 +130,7 @@ def chat():
             symptom_display = symptom.replace('_', ' ').title()
             
             reply = (f"I understand you're experiencing **{symptom_display}**. "
-                    f"To help me assess this better, how long have you been experiencing this symptom?\n\n"
-                    f"*(For example: '2 days', '3 hours', 'just started today')*")
+                    f"How long have you been experiencing this symptom?")
             return jsonify({"reply": reply, "options": []})
         
         return jsonify({
@@ -121,24 +146,21 @@ def chat():
         # Validate: re-ask if no time reference detected
         if duration_info == (None, None):
             return jsonify({
-                "reply": "I couldn't understand how long you've had this symptom. Could you describe it like:\n\n"
-                        "*(e.g. **'2 days'**, **'3 hours'**, **'since yesterday'**, **'just started today'**)*",
+                "reply": "I couldn't quite catch that. Could you tell me how long you've been experiencing this symptom? For example, you could say the number of hours or days.",
                 "options": []
             })
         
         state["duration"] = duration_info
         state["step"] = "SEVERITY"
         
-        reply = ("Thank you. Now, how severe is your symptom?\n\n"
-                "You can describe it in your own words — "
-                "for example: *'mild'*, *'hurts a lot'*, *'unbearable'*, *'not too bad'*.")
+        reply = "Thank you. How would you describe the severity of your symptom?"
         return jsonify({"reply": reply, "options": []})
 
     # === STEP 3: SEVERITY ===
     if state["step"] == "SEVERITY":
         severity_data = bot.extract_severity(message)
         
-        if severity_data:
+        if severity_data is not None:
             severity_label, severity_score = severity_data
             state["severity"] = severity_label
             state["severity_score"] = severity_score
@@ -149,11 +171,10 @@ def chat():
             questions = bot.symptoms_data[symptom]["questions"]
             
             reply = f"Understood, thank you. Now, I have a few more questions to better assess your situation.\n\n{questions[0]}"
-            return jsonify({"reply": reply, "options": []})
+            return jsonify({"reply": reply, "options": [], "question_num": 1, "question_total": len(questions)})
         else:
             return jsonify({
-                "reply": "I didn't quite catch the severity. Please describe it in your own words\n\n"
-                        "*(e.g. 'mild', 'a little pain', 'moderate', 'very painful', 'unbearable', or a number 1-10)*",
+                "reply": "I didn't quite catch that. Could you describe how severe it is? You can use words like mild, moderate, or severe, or give a number from 1 to 10.",
                 "options": []
             })
 
@@ -180,8 +201,8 @@ def chat():
             yes_no = bot.nlp.extract_yes_no(message.lower())
             if yes_no is None:
                 return jsonify({
-                    "reply": f"I need a **Yes** or **No** for this question:\n\n{current_question}",
-                    "options": ["Yes", "No"]
+                    "reply": f"Could you please answer with Yes or No?\n\n{current_question}",
+                    "options": []
                 })
         
         # Save the validated answer
@@ -194,26 +215,24 @@ def chat():
         if current_q_num < len(questions):
             state["step"] = f"FOLLOW_UP_Q{current_q_num + 1}"
             next_question = questions[current_q_num]
-            
-            # For yes/no questions, provide options (using same safe triggers)
-            if "?" in next_question and any(
-                trigger in next_question.lower() for trigger in YES_NO_TRIGGERS
-            ):
-                return jsonify({
-                    "reply": next_question,
-                    "options": ["Yes", "No"]
-                })
-            
-            return jsonify({"reply": next_question, "options": []})
+            return jsonify({"reply": next_question, "options": [], "question_num": current_q_num + 1, "question_total": len(questions)})
         
         # === FINAL CLASSIFICATION USING ML ===
         else:
-            # Use ML classifier for final decision
+            # Only pass answers from yes/no questions as red-flag signals
+            YES_NO_TRIGGERS = ["are you", "do you", "can you", "have you", "did you", "is there", "is it"]
+            yes_no_answers = [
+                state["answers"][i]
+                for i, q in enumerate(questions)
+                if i < len(state["answers"]) and "?" in q
+                and any(t in q.lower() for t in YES_NO_TRIGGERS)
+            ]
+
             result = bot.classify_issue_ml(
                 symptom=symptom,
                 duration_info=state["duration"],
                 severity_data=(state["severity"], state["severity_score"]),
-                follow_up_answers=state["answers"]
+                follow_up_answers=yes_no_answers
             )
             
             state["step"] = "COMPLETED"
@@ -261,4 +280,5 @@ if __name__ == '__main__':
     print("✅ 50+ Symptoms Supported")
     print(f"{'='*60}\n")
     
-    app.run(debug=True, port=5000)
+    # Set debug=False before deploying to production
+    app.run(debug=False, port=5000)
